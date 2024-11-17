@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sponsor Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Add or Manage Sponsors</h1>
+        <div id="message"></div>
+        
+        <form id="sponsorForm" onsubmit="handleSubmit(event)">
+            <label for="sponsor_name">Sponsor Name:</label><br>
+            <input type="text" id="sponsor_name" name="sponsor_name" required><br><br>
+
+            <label for="sponsor_phone_number">Phone Number:</label><br>
+            <input type="tel" id="sponsor_phone_number" name="sponsor_phone_number"><br><br>
+
+            <label for="sponsor_email">Email:</label><br>
+            <input type="email" id="sponsor_email" name="sponsor_email"><br><br>
+
+            <input type="submit" value="Add Sponsor">
+        </form>
+        <br>
+
+        <h2>Existing Sponsors</h2>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Sponsor ID</th>
+                    <th>Name</th>
+                    <th>Phone Number</th>
+                    <th>Email</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="sponsorsTableBody"></tbody>
+        </table>
+        <br>
+        
+        <div class="nav-links">
+            <a href="event_management_dashboard.html">Go to Event Management Dashboard</a>
+            <a href="attendee_registration_form.html">Go to Attendee Registration Form</a>
+        </div>
+    </div>
+
+    <script>
+        // Load sponsors when page loads
+        document.addEventListener('DOMContentLoaded', loadSponsors);
+
+        async function loadSponsors() {
+            try {
+                const response = await fetch('/sponsors');
+                const sponsors = await response.json();
+                const tbody = document.getElementById('sponsorsTableBody');
+                tbody.innerHTML = sponsors.map(sponsor => `
+                    <tr>
+                        <td>${sponsor.sponsor_ID}</td>
+                        <td>${sponsor.sponsor_name}</td>
+                        <td>${sponsor.sponsor_phone_number}</td>
+                        <td>${sponsor.sponsor_email}</td>
+                        <td>
+                            <button type="button" data-id="${sponsor.sponsor_ID}" onclick="deleteSponsor(this.getAttribute('data-id'))">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                showMessage('Error loading sponsors', true);
+                console.error('Load error:', error);
+            }
+        }
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+            const formData = {
+                sponsor_name: document.getElementById('sponsor_name').value,
+                sponsor_phone_number: document.getElementById('sponsor_phone_number').value,
+                sponsor_email: document.getElementById('sponsor_email').value
+            };
+
+            try {
+                const response = await fetch('/submit_sponsor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                const result = await response.json();
+                showMessage(result.message);
+                if (response.ok) {
+                    document.getElementById('sponsorForm').reset();
+                    loadSponsors();
+                }
+            } catch (error) {
+                showMessage('Error submitting form', true);
+            }
+        }
+
+        async function deleteSponsor(id) {
+            if (!id) {
+                console.error('No sponsor ID provided');
+                return;
+            }
+            console.log('Attempting to delete sponsor with ID:', id);
+            if (confirm('Are you sure you want to delete this sponsor?')) {
+                try {
+                    const response = await fetch(`/sponsors/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const result = await response.json();
+                    showMessage(result.message);
+                    await loadSponsors();
+                } catch (error) {
+                    showMessage('Error deleting sponsor', true);
+                    console.error('Delete error:', error);
+                }
+            }
+        }
+
+        function showMessage(message, isError = false) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = isError ? 'error' : 'success';
+            setTimeout(() => messageDiv.textContent = '', 3000);
+        }
+    </script>
+</body>
+</html>

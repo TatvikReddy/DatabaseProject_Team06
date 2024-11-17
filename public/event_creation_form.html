@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create New Event</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Create New Event</h1>
+        <div id="message"></div>
+
+        <form id="eventForm" onsubmit="handleSubmit(event)">
+            <label for="event_name">Event Name:</label><br>
+            <input type="text" id="event_name" name="event_name" required><br><br>
+
+            <label for="event_date">Event Date:</label><br>
+            <input type="date" id="event_date" name="event_date" required><br><br>
+
+            <label for="event_type">Event Type:</label><br>
+            <input type="text" id="event_type" name="event_type"><br><br>
+
+            <label for="budget">Budget:</label><br>
+            <input type="number" id="budget" name="budget" step="0.01"><br><br>
+
+            <label for="sponsor_id">Sponsor:</label><br>
+            <select id="sponsor_id" name="sponsor_id" required></select><br><br>
+
+            <label for="venue_id">Venue:</label><br>
+            <select id="venue_id" name="venue_id" required></select><br><br>
+
+            <input type="submit" value="Create Event">
+        </form>
+        <br>
+        <div class="nav-links">
+            <a href="event_management_dashboard.html">Go to Event Management Dashboard</a>
+            <a href="sponsor_management_form.html">Go to Sponsor Management Form</a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            await Promise.all([loadSponsors(), loadVenues()]);
+        });
+
+        async function loadSponsors() {
+            try {
+                const response = await fetch('/sponsors');
+                const sponsors = await response.json();
+                const select = document.getElementById('sponsor_id');
+                select.innerHTML = sponsors.map(s => 
+                    `<option value="${s.sponsor_ID}">${s.sponsor_name}</option>`
+                ).join('');
+            } catch (error) {
+                console.error('Error loading sponsors:', error);
+            }
+        }
+
+        async function loadVenues() {
+            try {
+                const response = await fetch('/venues');
+                const venues = await response.json();
+                const select = document.getElementById('venue_id');
+                select.innerHTML = venues.map(v => 
+                    `<option value="${v.venue_ID}">${v.venue_name}</option>`
+                ).join('');
+            } catch (error) {
+                console.error('Error loading venues:', error);
+            }
+        }
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+            const formData = {
+                event_name: document.getElementById('event_name').value,
+                event_date: document.getElementById('event_date').value,
+                event_type: document.getElementById('event_type').value,
+                budget: document.getElementById('budget').value,
+                sponsor_ID: document.getElementById('sponsor_id').value,
+                venue_ID: document.getElementById('venue_id').value
+            };
+
+            try {
+                const response = await fetch('/submit_event', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                const result = await response.json();
+                showMessage(result.message, !response.ok);
+                if (response.ok) {
+                    document.getElementById('eventForm').reset();
+                }
+            } catch (error) {
+                showMessage('Error submitting form', true);
+            }
+        }
+
+        function showMessage(message, isError = false) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = isError ? 'error' : 'success';
+            setTimeout(() => messageDiv.textContent = '', 3000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Venue Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .error { color: red; }
+        .success { color: green; }
+        .container { padding: 20px; }
+        table { width: 100%; margin-top: 20px; }
+        .form-section { margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Venue Management</h1>
+        <div id="message"></div>
+        
+        <!-- Venue Form Section -->
+        <div class="form-section">
+            <h2>Add New Venue</h2>
+            <form id="venueForm">
+                <label for="venue_name">Venue Name:</label>
+                <input type="text" id="venue_name" name="venue_name" required>
+
+                <label for="venue_phone_number">Phone Number:</label>
+                <input type="tel" id="venue_phone_number" name="venue_phone_number">
+
+                <label for="venue_email">Email:</label>
+                <input type="email" id="venue_email" name="venue_email">
+
+                <label for="venue_capacity">Capacity:</label>
+                <input type="number" id="venue_capacity" name="venue_capacity" min="1">
+
+                <button type="submit">Add Venue</button>
+            </form>
+        </div>
+
+        <!-- Location Form Section -->
+        <div class="form-section">
+            <h2>Add Venue Location</h2>
+            <form id="locationForm">
+                <label for="venue_id">Select Venue:</label>
+                <select id="venue_id" name="venue_id" required></select>
+
+                <label for="venue_location">Location:</label>
+                <input type="text" id="venue_location" name="venue_location" required>
+
+                <button type="submit">Add Location</button>
+            </form>
+        </div>
+
+        <!-- Venues Table -->
+        <h2>Existing Venues</h2>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Venue ID</th>
+                    <th>Name</th>
+                    <th>Phone Number</th>
+                    <th>Email</th>
+                    <th>Capacity</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="venuesTableBody"></tbody>
+        </table>
+
+        <!-- Locations Table -->
+        <h2>Venue Locations</h2>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Venue Name</th>
+                    <th>Location</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="locationsTableBody"></tbody>
+        </table>
+
+        <div class="nav-links">
+            <a href="event_management_dashboard.html">Back to Dashboard</a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Page loaded, initializing...');
+            // Add form submit handlers
+            document.getElementById('venueForm').addEventListener('submit', handleVenueSubmit);
+            document.getElementById('locationForm').addEventListener('submit', handleLocationSubmit);
+            // Load initial data
+            loadVenues().then(() => console.log('Venues loaded'));
+            loadLocations().then(() => console.log('Locations loaded'));
+        });
+
+        async function loadVenues() {
+            console.log('Loading venues...');
+            try {
+                const response = await fetch('/venues');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const venues = await response.json();
+                
+                // Update venues table
+                const tbody = document.getElementById('venuesTableBody');
+                tbody.innerHTML = venues.map(venue => `
+                    <tr>
+                        <td>${venue.venue_ID}</td>
+                        <td>${venue.venue_name}</td>
+                        <td>${venue.venue_phone_number || 'N/A'}</td>
+                        <td>${venue.venue_email || 'N/A'}</td>
+                        <td>${venue.venue_capacity || 'N/A'}</td>
+                        <td>
+                            <button onclick="deleteVenue(${venue.venue_ID})">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+
+                // Update venue select dropdown
+                const select = document.getElementById('venue_id');
+                select.innerHTML = venues.map(v => 
+                    `<option value="${v.venue_ID}">${v.venue_name}</option>`
+                ).join('');
+                
+                console.log('Venues loaded successfully');
+            } catch (error) {
+                console.error('Error loading venues:', error);
+                showMessage('Error loading venues: ' + error.message, true);
+            }
+        }
+
+        async function loadLocations() {
+            console.log('Loading locations...');
+            try {
+                const response = await fetch('/venue_locations');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const locations = await response.json();
+                
+                const tbody = document.getElementById('locationsTableBody');
+                tbody.innerHTML = locations.map(loc => `
+                    <tr>
+                        <td>${loc.venue_name}</td>
+                        <td>${loc.venue_location}</td>
+                        <td>
+                            <button onclick="deleteLocation(${loc.venue_ID}, '${loc.venue_location}')">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                console.log('Locations loaded successfully');
+            } catch (error) {
+                console.error('Error loading locations:', error);
+                showMessage('Error loading locations: ' + error.message, true);
+            }
+        }
+
+        async function handleVenueSubmit(event) {
+            event.preventDefault();
+            console.log('Submitting new venue...');
+            
+            const formData = {
+                venue_name: document.getElementById('venue_name').value,
+                venue_phone_number: document.getElementById('venue_phone_number').value,
+                venue_email: document.getElementById('venue_email').value,
+                venue_capacity: parseInt(document.getElementById('venue_capacity').value) || null
+            };
+
+            try {
+                const response = await fetch('/submit_venue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to add venue');
+                }
+                
+                const result = await response.json();
+                showMessage(result.message);
+                document.getElementById('venueForm').reset();
+                await loadVenues();
+                console.log('Venue submitted successfully');
+            } catch (error) {
+                console.error('Error submitting venue:', error);
+                showMessage('Error submitting venue: ' + error.message, true);
+            }
+        }
+
+        async function handleLocationSubmit(event) {
+            event.preventDefault();
+            console.log('Submitting new location...');
+            
+            const formData = {
+                venue_ID: document.getElementById('venue_id').value,
+                venue_location: document.getElementById('venue_location').value
+            };
+
+            try {
+                const response = await fetch('/submit_venue_location', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const result = await response.json();
+                
+                showMessage(result.message);
+                document.getElementById('locationForm').reset();
+                await loadLocations();
+                console.log('Location submitted successfully');
+            } catch (error) {
+                console.error('Error submitting location:', error);
+                showMessage('Error submitting location: ' + error.message, true);
+            }
+        }
+
+        async function deleteVenue(id) {
+            if (!confirm('Are you sure you want to delete this venue?')) return;
+            
+            console.log('Deleting venue:', id);
+            try {
+                const response = await fetch(`/venues/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const result = await response.json();
+                
+                showMessage(result.message);
+                await loadVenues();
+                await loadLocations();
+                console.log('Venue deleted successfully');
+            } catch (error) {
+                console.error('Error deleting venue:', error);
+                showMessage('Error deleting venue: ' + error.message, true);
+            }
+        }
+
+        async function deleteLocation(venueId, location) {
+            if (!confirm('Are you sure you want to delete this location?')) return;
+            
+            console.log('Deleting location:', {venueId, location});
+            try {
+                const response = await fetch(`/venue_locations/${venueId}/${encodeURIComponent(location)}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const result = await response.json();
+                
+                showMessage(result.message);
+                await loadLocations();
+                console.log('Location deleted successfully');
+            } catch (error) {
+                console.error('Error deleting location:', error);
+                showMessage('Error deleting location: ' + error.message, true);
+            }
+        }
+
+        function showMessage(message, isError = false) {
+            console.log(`${isError ? 'Error' : 'Success'} message:`, message);
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = isError ? 'error' : 'success';
+            setTimeout(() => {
+                messageDiv.textContent = '';
+                messageDiv.className = '';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

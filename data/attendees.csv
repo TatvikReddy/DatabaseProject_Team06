@@ -1,0 +1,4 @@
+attendee_ID,first_name,last_name,email,phone_number,event_ID
+1,John,Doe,john.doe@example.com,555-1111,1
+2,Jane,Smith,jane.smith@example.com,555-2222,2
+3,Bob,Brown,bob.brown@example.com,555-3333,1

@@ -1,0 +1,124 @@
+<!-- File: attendee_registration_form.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Attendee Registration</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Register for an Event</h1>
+        <div id="message" role="alert"></div>
+        <form id="attendeeForm">
+            <label for="first_name">First Name:</label>
+            <input type="text" id="first_name" name="first_name" required>
+
+            <label for="last_name">Last Name:</label>
+            <input type="text" id="last_name" name="last_name" required>
+
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email">
+
+            <label for="phone_number">Phone Number:</label>
+            <input type="tel" id="phone_number" name="phone_number">
+
+            <label for="event_id">Select Event:</label>
+            <select id="event_id" name="event_id" required>
+                <option value="">-- Select an Event --</option>
+            </select>
+
+            <input type="submit" value="Register">
+        </form>
+
+        <div class="nav-links">
+            <a href="event_management_dashboard.html">Go to Event Management Dashboard</a>
+            <a href="sponsor_management_form.html">Go to Sponsor Management Form</a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadEvents();
+
+            const attendeeForm = document.getElementById('attendeeForm');
+            attendeeForm.addEventListener('submit', handleSubmit);
+        });
+
+        async function loadEvents() {
+            try {
+                const response = await fetch('/events');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch events');
+                }
+                const events = await response.json();
+                const select = document.getElementById('event_id');
+
+                // Clear existing options except the first default option
+                select.innerHTML = '<option value="">-- Select an Event --</option>';
+
+                // Add new options
+                events.forEach(event => {
+                    const option = document.createElement('option');
+                    option.value = event.event_ID;
+                    option.textContent = `${event.event_name} - ${event.event_type}`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading events:', error);
+                showMessage('Error loading events', true);
+            }
+        }
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+
+            const firstName = document.getElementById('first_name').value.trim();
+            const lastName = document.getElementById('last_name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phoneNumber = document.getElementById('phone_number').value.trim();
+            const eventId = document.getElementById('event_id').value;
+
+            if (!eventId) {
+                showMessage('Please select an event.', true);
+                return;
+            }
+
+            const formData = {
+                first_name: firstName,
+                last_name: lastName,
+                email: email,
+                phone_number: phoneNumber,
+                event_ID: eventId
+            };
+
+            try {
+                const response = await fetch('/submit_attendee', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                const result = await response.json();
+                showMessage(result.message, !response.ok);
+                if (response.ok) {
+                    document.getElementById('attendeeForm').reset();
+                }
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                showMessage('Error submitting form', true);
+            }
+        }
+
+        function showMessage(message, isError = false) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = isError ? 'error' : 'success';
+            setTimeout(() => {
+                messageDiv.textContent = '';
+                messageDiv.className = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

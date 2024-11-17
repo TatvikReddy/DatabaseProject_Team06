@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Event Attendees</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1 id="eventTitle">Event Attendees</h1>
+        <div id="message"></div>
+
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Attendee ID</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Email</th>
+                    <th>Phone Number</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="attendeesTableBody"></tbody>
+        </table>
+
+        <div class="summary-section">
+            <p>Total Attendees: <span id="totalAttendees">0</span></p>
+        </div>
+
+        <div class="nav-links">
+            <a href="event_management_dashboard.html">Back to Dashboard</a>
+            <a href="attendee_registration_form.html">Register New Attendee</a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const eventId = params.get('id');
+            const eventName = params.get('name');
+
+            if (eventId && eventName) {
+                document.getElementById('eventTitle').textContent = `Attendees for ${decodeURIComponent(eventName)}`;
+                loadAttendees(eventId);
+            } else {
+                showMessage('No event specified', true);
+            }
+        });
+
+        async function loadAttendees(eventId) {
+            try {
+                const response = await fetch(`/event_attendees/${eventId}`);
+                if (!response.ok) throw new Error('Failed to fetch attendees');
+                
+                const attendees = await response.json();
+                const tbody = document.getElementById('attendeesTableBody');
+                
+                tbody.innerHTML = attendees.map(attendee => `
+                    <tr>
+                        <td>${attendee.attendee_ID}</td>
+                        <td>${attendee.first_name}</td>
+                        <td>${attendee.last_name}</td>
+                        <td>${attendee.email || 'N/A'}</td>
+                        <td>${attendee.phone_number || 'N/A'}</td>
+                        <td>
+                            <button onclick="deleteAttendee(${attendee.attendee_ID})">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+
+                document.getElementById('totalAttendees').textContent = attendees.length;
+            } catch (error) {
+                console.error('Error loading attendees:', error);
+                showMessage('Error loading attendees', true);
+            }
+        }
+
+        async function deleteAttendee(attendeeId) {
+            if (!confirm('Are you sure you want to remove this attendee?')) return;
+
+            try {
+                const response = await fetch(`/attendees/${attendeeId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Failed to delete attendee');
+                
+                const result = await response.json();
+                showMessage(result.message);
+                
+                // Reload the attendees list
+                const params = new URLSearchParams(window.location.search);
+                const eventId = params.get('id');
+                await loadAttendees(eventId);
+            } catch (error) {
+                console.error('Error deleting attendee:', error);
+                showMessage('Error deleting attendee', true);
+            }
+        }
+
+        function showMessage(message, isError = false) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = isError ? 'error' : 'success';
+            setTimeout(() => {
+                messageDiv.textContent = '';
+                messageDiv.className = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

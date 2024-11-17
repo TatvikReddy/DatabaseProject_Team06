@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Event Management Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .error { color: red; }
+        .success { color: green; }
+        .event-link {
+            color: #3498db;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .event-link:hover {
+            color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Event Management Dashboard</h1>
+        <div id="message"></div>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Event ID</th>
+                    <th>Event Name</th>
+                    <th>Date</th>
+                    <th>Type</th> 
+                    <th>Venue</th>
+                    <th>Budget</th>
+                    <th>Sponsor</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- This section will be dynamically populated with event data -->
+            </tbody>
+        </table>
+        <br>
+        <div class="nav-links">
+            <a href="event_creation_form.html">Create New Event</a>
+            <a href="sponsor_management_form.html">Manage Sponsors</a>
+            <a href="attendee_registration_form.html">Register Attendees</a>
+            <a href="venue_management.html">Manage Venues</a>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', loadEvents);
+
+        async function loadEvents() {
+            try {
+                const response = await fetch('/events');
+                const events = await response.json();
+                const tbody = document.querySelector('tbody');
+                tbody.innerHTML = events.map(event => `
+                    <tr>
+                        <td>${event.event_ID}</td>
+                        <td>
+                            <a href="event_attendees.html?id=${event.event_ID}&name=${encodeURIComponent(event.event_name)}" 
+                               class="event-link"
+                               onclick="event.stopPropagation();">
+                                ${event.event_name}
+                            </a>
+                        </td>
+                        <td>${event.formatted_date}</td>
+                        <td>${event.event_type || 'N/A'}</td>
+                        <td>${event.venue_name}</td>
+                        <td>$${event.budget || '0'}</td>
+                        <td>${event.sponsor_name}</td>
+                        <td>
+                            <button onclick="deleteEvent(${event.event_ID})">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                showMessage('Error loading events', true);
+            }
+        }
+
+        async function deleteEvent(id) {
+            if (!confirm('Are you sure you want to delete this event?')) return;
+            
+            try {
+                const response = await fetch(`/events/${id}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                showMessage(result.message, !response.ok);
+                if (response.ok) await loadEvents();
+            } catch (error) {
+                showMessage('Error deleting event', true);
+            }
+        }
+
+        function showMessage(message, isError = false) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = isError ? 'error' : 'success';
+            setTimeout(() => messageDiv.textContent = '', 3000);
+        }
+    </script>
+</body>
+</html>

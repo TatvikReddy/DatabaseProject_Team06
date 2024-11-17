@@ -1,0 +1,3 @@
+event_ID,event_name,event_type,budget,sponsor_ID,venue_ID
+1,Annual Conference,Conference,10000.00,1,1
+2,Charity Gala,Gala,15000.00,2,2
