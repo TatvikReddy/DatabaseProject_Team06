@@ -2,7 +2,7 @@ const express = require('express');
 const mysql = require('mysql2');
 const app = express();
 
-app.use(express.static('.'));
+app.use(express.static('public'));
 app.use(express.json());
 
 const connection = mysql.createConnection({
@@ -25,21 +25,15 @@ async function resetAutoIncrement(tableName, idColumn) {
 // Generic reorder IDs function
 async function reorderIds(tableName, idColumn, dependentTables) {
     try {
-        // Get all records ordered by ID
         const [records] = await connection.promise().query(`SELECT * FROM ${tableName} ORDER BY ${idColumn}`);
-        
-        // Update IDs to be sequential
         for (let i = 0; i < records.length; i++) {
             const newId = i + 1;
             const oldId = records[i][idColumn];
             if (newId !== oldId) {
-                // Update main table
                 await connection.promise().query(
                     `UPDATE ${tableName} SET ${idColumn} = ? WHERE ${idColumn} = ?`,
                     [newId, oldId]
                 );
-
-                // Update dependent tables
                 for (const { table, column } of dependentTables) {
                     await connection.promise().query(
                         `UPDATE ${table} SET ${column} = ? WHERE ${column} = ?`,
@@ -48,8 +42,6 @@ async function reorderIds(tableName, idColumn, dependentTables) {
                 }
             }
         }
-        
-        // Reset auto-increment
         await resetAutoIncrement(tableName, idColumn);
     } catch (error) {
         console.error(`Error reordering IDs for ${tableName}:`, error);
@@ -57,10 +49,9 @@ async function reorderIds(tableName, idColumn, dependentTables) {
     }
 }
 
-// Modify the get sponsors endpoint to ensure IDs are sequential
+// Get all sponsors
 app.get('/sponsors', async (req, res) => {
     try {
-        // Reset auto-increment before fetching
         await resetAutoIncrement('Sponsors', 'sponsor_ID');
         const [results] = await connection.promise().query('SELECT * FROM Sponsors ORDER BY sponsor_ID');
         res.json(results);
@@ -85,39 +76,26 @@ app.post('/submit_sponsor', (req, res) => {
     );
 });
 
-// Modify the delete endpoint
+// Delete sponsor
 app.delete('/sponsors/:id', async (req, res) => {
     const sponsorId = parseInt(req.params.id, 10);
-    
     if (isNaN(sponsorId)) {
-        console.log('Invalid sponsor ID:', req.params.id);
         return res.status(400).json({ error: 'Invalid sponsor ID' });
     }
-    
-    console.log('Attempting to delete sponsor with ID:', sponsorId);
-
     try {
-        // Delete the sponsor
         const [deleteResult] = await connection.promise().query(
             'DELETE FROM Sponsors WHERE sponsor_ID = ?',
             [sponsorId]
         );
-
         if (deleteResult.affectedRows === 0) {
-            console.log('No sponsor found with ID:', sponsorId);
             return res.status(404).json({ message: 'Sponsor not found' });
         }
-
-        // Use the generic reorderIds function
         await reorderIds('Sponsors', 'sponsor_ID', [
             { table: 'Events', column: 'sponsor_ID' },
             { table: 'Sponsor_List', column: 'sponsor_ID' }
         ]);
-        
-        console.log('Successfully deleted sponsor with ID:', sponsorId);
         res.json({ message: 'Sponsor deleted successfully' });
     } catch (error) {
-        console.error('Database error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -133,32 +111,28 @@ app.get('/venues', async (req, res) => {
     }
 });
 
-// Modify the submit venue endpoint
+// Add new venue
 app.post('/submit_venue', async (req, res) => {
     const { venue_name, venue_phone_number, venue_email, venue_capacity } = req.body;
-    
     if (!venue_name) {
         return res.status(400).json({ error: 'Venue name is required' });
     }
-
     try {
         const [result] = await connection.promise().query(
             'INSERT INTO Venues (venue_name, venue_phone_number, venue_email, venue_capacity) VALUES (?, ?, ?, ?)',
             [venue_name, venue_phone_number, venue_email, venue_capacity]
         );
-        
         if (result.affectedRows === 1) {
             res.json({ message: 'Venue added successfully' });
         } else {
             throw new Error('Failed to add venue');
         }
     } catch (error) {
-        console.error('Database error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Modify the delete venue endpoint
+// Delete venue
 app.delete('/venues/:id', async (req, res) => {
     const venueId = parseInt(req.params.id, 10);
     try {
@@ -166,18 +140,14 @@ app.delete('/venues/:id', async (req, res) => {
             'DELETE FROM Venues WHERE venue_ID = ?',
             [venueId]
         );
-
         if (deleteResult.affectedRows === 0) {
             return res.status(404).json({ message: 'Venue not found' });
         }
-
-        // Reorder IDs after successful deletion
         await reorderIds('Venues', 'venue_ID', [
             { table: 'Events', column: 'venue_ID' },
             { table: 'Venue_Locations', column: 'venue_ID' },
             { table: 'Vendors', column: 'venue_ID' }
         ]);
-        
         res.json({ message: 'Venue deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -201,16 +171,50 @@ app.get('/events', async (req, res) => {
     }
 });
 
-// Modify the submit event endpoint
+// Submit new event
 app.post('/submit_event', async (req, res) => {
     const { event_name, event_date, event_type, budget, sponsor_ID, venue_ID } = req.body;
-
     try {
-        await connection.promise().query(
+        const [result] = await connection.promise().query(
             'INSERT INTO Events (event_name, event_date, event_type, budget, sponsor_ID, venue_ID) VALUES (?, ?, ?, ?, ?, ?)',
             [event_name, event_date, event_type, budget, sponsor_ID, venue_ID]
         );
         res.json({ message: 'Event added successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete event
+app.delete('/events/:id', async (req, res) => {
+    const eventId = parseInt(req.params.id, 10);
+    try {
+        const [result] = await connection.promise().query(
+            'DELETE FROM Events WHERE event_ID = ?', 
+            [eventId]
+        );
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+        await reorderIds('Events', 'event_ID', [
+            { table: 'Attendees', column: 'event_ID' },
+            { table: 'Sponsor_List', column: 'event_ID' }
+        ]);
+        res.json({ message: 'Event deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get attendees by event ID
+app.get('/event_attendees/:id', async (req, res) => {
+    const eventId = req.params.id;
+    try {
+        const [results] = await connection.promise().query(
+            'SELECT * FROM Attendees WHERE event_ID = ? ORDER BY attendee_ID',
+            [eventId]
+        );
+        res.json(results);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -230,67 +234,22 @@ app.post('/submit_attendee', async (req, res) => {
     }
 });
 
-// Delete attendee endpoint
+// Delete attendee
 app.delete('/attendees/:id', async (req, res) => {
     const attendeeId = parseInt(req.params.id, 10);
-    
     if (isNaN(attendeeId)) {
         return res.status(400).json({ error: 'Invalid attendee ID' });
     }
-
     try {
         const [result] = await connection.promise().query(
             'DELETE FROM Attendees WHERE attendee_ID = ?',
             [attendeeId]
         );
-
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'Attendee not found' });
         }
-
         res.json({ message: 'Attendee removed successfully' });
     } catch (error) {
-        console.error('Error deleting attendee:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Modify the delete event endpoint
-app.delete('/events/:id', async (req, res) => {
-    const eventId = parseInt(req.params.id, 10);
-    try {
-        const [result] = await connection.promise().query(
-            'DELETE FROM Events WHERE event_ID = ?', 
-            [eventId]
-        );
-        
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Event not found' });
-        }
-
-        // Reorder IDs after successful deletion
-        await reorderIds('Events', 'event_ID', [
-            { table: 'Attendees', column: 'event_ID' },
-            { table: 'Sponsor_List', column: 'event_ID' }
-        ]);
-
-        res.json({ message: 'Event deleted successfully' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Get attendees by event ID
-app.get('/event_attendees/:id', async (req, res) => {
-    const eventId = req.params.id;
-    try {
-        const [results] = await connection.promise().query(
-            'SELECT * FROM Attendees WHERE event_ID = ? ORDER BY attendee_ID',
-            [eventId]
-        );
-        res.json(results);
-    } catch (error) {
-        console.error('Error fetching attendees:', error);
         res.status(500).json({ error: error.message });
     }
 });
