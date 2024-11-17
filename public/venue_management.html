@@ -107,29 +107,33 @@
                 // Update venues table
                 const tbody = document.getElementById('venuesTableBody');
                 tbody.innerHTML = venues.map(venue => `
-                    <tr>
+                    <tr id="venue-row-${venue.venue_ID}">
                         <td>${venue.venue_ID}</td>
-                        <td>${venue.venue_name}</td>
-                        <td>${venue.venue_phone_number || 'N/A'}</td>
-                        <td>${venue.venue_email || 'N/A'}</td>
-                        <td>${venue.venue_capacity || 'N/A'}</td>
+                        <td data-original="${venue.venue_name}">${venue.venue_name}</td>
+                        <td data-original="${venue.venue_phone_number || ''}">${venue.venue_phone_number || 'N/A'}</td>
+                        <td data-original="${venue.venue_email || ''}">${venue.venue_email || 'N/A'}</td>
+                        <td data-original="${venue.venue_capacity || ''}">${venue.venue_capacity || 'N/A'}</td>
                         <td>
+                            <button onclick="enterEditMode(${venue.venue_ID})">Edit</button>
                             <button onclick="deleteVenue(${venue.venue_ID})">Delete</button>
                         </td>
                     </tr>
                 `).join('');
 
                 // Update venue select dropdown
-                const select = document.getElementById('venue_id');
-                select.innerHTML = venues.map(v => 
-                    `<option value="${v.venue_ID}">${v.venue_name}</option>`
-                ).join('');
+                updateVenueDropdown(venues);
                 
                 console.log('Venues loaded successfully');
             } catch (error) {
                 console.error('Error loading venues:', error);
                 showMessage('Error loading venues: ' + error.message, true);
             }
+        }
+
+        function updateVenueDropdown(venues) {
+            const select = document.getElementById('venue_id');
+            select.innerHTML = '<option value="">Select a Venue</option>' + 
+                venues.map(v => `<option value="${v.venue_ID}">${v.venue_name}</option>`).join('');
         }
 
         async function loadLocations() {
@@ -141,10 +145,11 @@
                 
                 const tbody = document.getElementById('locationsTableBody');
                 tbody.innerHTML = locations.map(loc => `
-                    <tr>
+                    <tr id="location-row-${loc.venue_ID}-${encodeURIComponent(loc.venue_location)}">
                         <td>${loc.venue_name}</td>
-                        <td>${loc.venue_location}</td>
+                        <td data-original="${loc.venue_location}">${loc.venue_location}</td>
                         <td>
+                            <button onclick="enterLocationEditMode(${loc.venue_ID}, '${loc.venue_location}')">Edit</button>
                             <button onclick="deleteLocation(${loc.venue_ID}, '${loc.venue_location}')">Delete</button>
                         </td>
                     </tr>
@@ -263,6 +268,58 @@
             }
         }
 
+        async function editVenue(id) {
+            try {
+                const response = await fetch(`/venues/${id}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const venue = await response.json();
+
+                // Populate the form with existing data
+                document.getElementById('venue_name').value = venue.venue_name || '';
+                document.getElementById('venue_phone_number').value = venue.venue_phone_number || '';
+                document.getElementById('venue_email').value = venue.venue_email || '';
+                document.getElementById('venue_capacity').value = venue.venue_capacity || '';
+
+                // Change form submission to update mode
+                const venueForm = document.getElementById('venueForm');
+                venueForm.removeEventListener('submit', handleVenueSubmit);
+                venueForm.addEventListener('submit', function updateVenue(event) {
+                    event.preventDefault();
+                    handleVenueUpdate(id);
+                    venueForm.removeEventListener('submit', updateVenue);
+                    venueForm.addEventListener('submit', handleVenueSubmit);
+                });
+            } catch (error) {
+                showMessage('Error fetching venue: ' + error.message, true);
+            }
+        }
+
+        async function handleVenueUpdate(id) {
+            const formData = {
+                venue_name: document.getElementById('venue_name').value,
+                venue_phone_number: document.getElementById('venue_phone_number').value,
+                venue_email: document.getElementById('venue_email').value,
+                venue_capacity: parseInt(document.getElementById('venue_capacity').value) || null
+            };
+
+            try {
+                const response = await fetch(`/venues/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) throw new Error('Failed to update venue');
+
+                const result = await response.json();
+                showMessage(result.message);
+                document.getElementById('venueForm').reset();
+                await loadVenues();
+            } catch (error) {
+                showMessage('Error updating venue: ' + error.message, true);
+            }
+        }
+
         function showMessage(message, isError = false) {
             console.log(`${isError ? 'Error' : 'Success'} message:`, message);
             const messageDiv = document.getElementById('message');
@@ -272,6 +329,114 @@
                 messageDiv.textContent = '';
                 messageDiv.className = '';
             }, 3000);
+        }
+
+        function enterEditMode(id) {
+            const row = document.getElementById(`venue-row-${id}`);
+            const cells = row.getElementsByTagName('td');
+
+            // Skip first cell (ID) and last cell (actions)
+            for (let i = 1; i < cells.length - 1; i++) {
+                const originalValue = cells[i].getAttribute('data-original');
+                const inputType = i === 4 ? 'number' : i === 3 ? 'email' : 'text';
+                cells[i].innerHTML = `<input type="${inputType}" value="${originalValue}" class="edit-input">`;
+            }
+
+            cells[cells.length - 1].innerHTML = `
+                <button onclick="saveVenue(${id})">Save</button>
+                <button onclick="cancelEdit(${id})">Cancel</button>
+            `;
+        }
+
+        function cancelEdit(id) {
+            // Reload venues to reset the row
+            loadVenues();
+        }
+
+        async function saveVenue(id) {
+            const row = document.getElementById(`venue-row-${id}`);
+            const inputs = row.getElementsByClassName('edit-input');
+
+            const formData = {
+                venue_name: inputs[0].value,
+                venue_phone_number: inputs[1].value,
+                venue_email: inputs[2].value,
+                venue_capacity: parseInt(inputs[3].value) || null
+            };
+
+            try {
+                const response = await fetch(`/venues/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || 'Failed to update venue');
+                    showMessage(result.message || 'Venue updated successfully');
+                } else {
+                    const text = await response.text();
+                    throw new Error(text || 'Failed to update venue');
+                }
+
+                await loadVenues();
+            } catch (error) {
+                console.error('Update error:', error);
+                showMessage('Error updating venue: ' + error.message, true);
+            }
+        }
+
+        function enterLocationEditMode(venueId, location) {
+            const row = document.getElementById(`location-row-${venueId}-${encodeURIComponent(location)}`);
+            const cells = row.getElementsByTagName('td');
+            
+            // Only make the location field editable
+            cells[1].innerHTML = `<input type="text" value="${cells[1].getAttribute('data-original')}" class="edit-input">`;
+            
+            cells[2].innerHTML = `
+                <button onclick="saveLocation(${venueId}, '${location}')">Save</button>
+                <button onclick="cancelLocationEdit(${venueId}, '${location}')">Cancel</button>
+            `;
+        }
+
+        function cancelLocationEdit(venueId, location) {
+            loadLocations();
+        }
+
+        async function saveLocation(venueId, oldLocation) {
+            const row = document.getElementById(`location-row-${venueId}-${encodeURIComponent(oldLocation)}`);
+            const newLocation = row.getElementsByTagName('td')[1].querySelector('input').value;
+
+            const formData = {
+                venue_ID: venueId,
+                old_location: oldLocation,
+                new_location: newLocation
+            };
+
+            try {
+                const response = await fetch(`/venue_locations/${venueId}/${encodeURIComponent(oldLocation)}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || 'Failed to update location');
+                    showMessage(result.message || 'Location updated successfully');
+                } else {
+                    const text = await response.text();
+                    throw new Error(text || 'Failed to update location');
+                }
+
+                await loadLocations();
+            } catch (error) {
+                console.error('Update error:', error);
+                showMessage('Error updating location: ' + error.message, true);
+            }
         }
     </script>
 </body>

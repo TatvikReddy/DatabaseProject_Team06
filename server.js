@@ -100,6 +100,26 @@ app.delete('/sponsors/:id', async (req, res) => {
     }
 });
 
+// Update sponsor
+app.put('/sponsors/:id', async (req, res) => {
+    const sponsorId = parseInt(req.params.id, 10);
+    const { sponsor_name, sponsor_phone_number, sponsor_email } = req.body;
+    console.log(`Updating sponsor ID: ${sponsorId}`, req.body);
+    try {
+        const [result] = await connection.promise().query(
+            'UPDATE Sponsors SET sponsor_name = ?, sponsor_phone_number = ?, sponsor_email = ? WHERE sponsor_ID = ?',
+            [sponsor_name, sponsor_phone_number, sponsor_email, sponsorId]
+        );
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Sponsor not found' });
+        }
+        res.json({ message: 'Sponsor updated successfully' });
+    } catch (error) {
+        console.error('Error updating sponsor:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Get all venues
 app.get('/venues', async (req, res) => {
     try {
@@ -154,6 +174,26 @@ app.delete('/venues/:id', async (req, res) => {
     }
 });
 
+// Update venue (if you have edit functionality for venues)
+app.put('/venues/:id', async (req, res) => {
+    const venueId = parseInt(req.params.id, 10);
+    const { venue_name, venue_phone_number, venue_email, venue_capacity } = req.body;
+    console.log(`Updating venue ID: ${venueId}`, req.body);
+    try {
+        const [result] = await connection.promise().query(
+            'UPDATE Venues SET venue_name = ?, venue_phone_number = ?, venue_email = ?, venue_capacity = ? WHERE venue_ID = ?',
+            [venue_name, venue_phone_number, venue_email, venue_capacity, venueId]
+        );
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Venue not found' });
+        }
+        res.json({ message: 'Venue updated successfully' });
+    } catch (error) {
+        console.error('Error updating venue:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Get all events
 app.get('/events', async (req, res) => {
     try {
@@ -181,6 +221,26 @@ app.post('/submit_event', async (req, res) => {
         );
         res.json({ message: 'Event added successfully' });
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Update event
+app.put('/events/:id', async (req, res) => {
+    const eventId = parseInt(req.params.id, 10);
+    const { event_name, event_date, event_type, budget } = req.body;
+    console.log(`Updating event ID: ${eventId}`, req.body);
+    try {
+        const [result] = await connection.promise().query(
+            'UPDATE Events SET event_name = ?, event_date = ?, event_type = ?, budget = ? WHERE event_ID = ?',
+            [event_name, event_date, event_type, budget, eventId]
+        );
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+        res.json({ message: 'Event updated successfully' });
+    } catch (error) {
+        console.error('Error updating event:', error);
         res.status(500).json({ error: error.message });
     }
 });

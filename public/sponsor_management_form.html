@@ -60,13 +60,14 @@
                 const sponsors = await response.json();
                 const tbody = document.getElementById('sponsorsTableBody');
                 tbody.innerHTML = sponsors.map(sponsor => `
-                    <tr>
+                    <tr id="sponsor-row-${sponsor.sponsor_ID}">
                         <td>${sponsor.sponsor_ID}</td>
-                        <td>${sponsor.sponsor_name}</td>
-                        <td>${sponsor.sponsor_phone_number}</td>
-                        <td>${sponsor.sponsor_email}</td>
+                        <td data-original="${sponsor.sponsor_name}">${sponsor.sponsor_name}</td>
+                        <td data-original="${sponsor.sponsor_phone_number || ''}">${sponsor.sponsor_phone_number || 'N/A'}</td>
+                        <td data-original="${sponsor.sponsor_email || ''}">${sponsor.sponsor_email || 'N/A'}</td>
                         <td>
-                            <button type="button" data-id="${sponsor.sponsor_ID}" onclick="deleteSponsor(this.getAttribute('data-id'))">Delete</button>
+                            <button onclick="enterEditMode(${sponsor.sponsor_ID})">Edit</button>
+                            <button onclick="deleteSponsor(${sponsor.sponsor_ID})">Delete</button>
                         </td>
                     </tr>
                 `).join('');
@@ -128,11 +129,119 @@
             }
         }
 
+        async function editSponsor(id) {
+            try {
+                const response = await fetch(`/sponsors/${id}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const sponsor = await response.json();
+
+                // Populate the form with existing data
+                document.getElementById('sponsor_name').value = sponsor.sponsor_name || '';
+                document.getElementById('sponsor_phone_number').value = sponsor.sponsor_phone_number || '';
+                document.getElementById('sponsor_email').value = sponsor.sponsor_email || '';
+
+                // Change form submission to update mode
+                const sponsorForm = document.getElementById('sponsorForm');
+                sponsorForm.removeEventListener('submit', handleSubmit);
+                sponsorForm.addEventListener('submit', function updateSponsor(event) {
+                    event.preventDefault();
+                    handleSponsorUpdate(id);
+                    sponsorForm.removeEventListener('submit', updateSponsor);
+                    sponsorForm.addEventListener('submit', handleSubmit);
+                });
+
+                enterEditMode(id);
+            } catch (error) {
+                showMessage('Error fetching sponsor: ' + error.message, true);
+            }
+        }
+
+        async function handleSponsorUpdate(id) {
+            const formData = {
+                sponsor_name: document.getElementById('sponsor_name').value,
+                sponsor_phone_number: document.getElementById('sponsor_phone_number').value,
+                sponsor_email: document.getElementById('sponsor_email').value
+            };
+
+            try {
+                const response = await fetch(`/sponsors/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) throw new Error('Failed to update sponsor');
+
+                const result = await response.json();
+                showMessage(result.message);
+                document.getElementById('sponsorForm').reset();
+                await loadSponsors();
+            } catch (error) {
+                showMessage('Error updating sponsor: ' + error.message, true);
+            }
+        }
+
         function showMessage(message, isError = false) {
             const messageDiv = document.getElementById('message');
             messageDiv.textContent = message;
             messageDiv.className = isError ? 'error' : 'success';
             setTimeout(() => messageDiv.textContent = '', 3000);
+        }
+
+        function enterEditMode(id) {
+            const row = document.getElementById(`sponsor-row-${id}`);
+            const cells = row.getElementsByTagName('td');
+            
+            // Skip first cell (ID) and last cell (actions)
+            for (let i = 1; i < cells.length - 1; i++) {
+                const originalValue = cells[i].getAttribute('data-original');
+                const inputType = i === 3 ? 'email' : 'text';
+                cells[i].innerHTML = `<input type="${inputType}" value="${originalValue}" class="edit-input">`;
+            }
+
+            cells[cells.length - 1].innerHTML = `
+                <button onclick="saveSponsor(${id})">Save</button>
+                <button onclick="cancelEdit(${id})">Cancel</button>
+            `;
+        }
+
+        function cancelEdit(id) {
+            // Reload sponsors to reset the row
+            loadSponsors();
+        }
+
+        async function saveSponsor(id) {
+            const row = document.getElementById(`sponsor-row-${id}`);
+            const inputs = row.getElementsByClassName('edit-input');
+
+            const formData = {
+                sponsor_name: inputs[0].value,
+                sponsor_phone_number: inputs[1].value,
+                sponsor_email: inputs[2].value
+            };
+
+            try {
+                const response = await fetch(`/sponsors/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || 'Failed to update sponsor');
+                    showMessage(result.message || 'Sponsor updated successfully');
+                } else {
+                    const text = await response.text();
+                    throw new Error(text || 'Failed to update sponsor');
+                }
+
+                await loadSponsors();
+            } catch (error) {
+                console.error('Update error:', error);
+                showMessage('Error updating sponsor: ' + error.message, true);
+            }
         }
     </script>
 </body>

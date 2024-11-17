@@ -64,6 +64,16 @@ select {
     box-sizing: border-box;
 }
 
+table input[type="text"],
+table input[type="email"],
+table input[type="tel"],
+table input[type="number"],
+table input[type="date"] {
+    width: 95%;
+    padding: 5px;
+    box-sizing: border-box;
+}
+
 input[type="submit"],
 button {
     background-color: var(--primary-color);

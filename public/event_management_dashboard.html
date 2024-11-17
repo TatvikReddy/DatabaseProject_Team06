@@ -56,21 +56,22 @@
                 const events = await response.json();
                 const tbody = document.querySelector('tbody');
                 tbody.innerHTML = events.map(event => `
-                    <tr>
+                    <tr id="event-row-${event.event_ID}">
                         <td>${event.event_ID}</td>
-                        <td>
+                        <td data-original="${event.event_name}">
                             <a href="event_attendees.html?id=${event.event_ID}&name=${encodeURIComponent(event.event_name)}" 
                                class="event-link"
                                onclick="event.stopPropagation();">
                                 ${event.event_name}
                             </a>
                         </td>
-                        <td>${event.formatted_date}</td>
-                        <td>${event.event_type || 'N/A'}</td>
+                        <td data-original="${event.formatted_date}">${event.formatted_date}</td>
+                        <td data-original="${event.event_type || ''}">${event.event_type || 'N/A'}</td>
                         <td>${event.venue_name}</td>
-                        <td>$${event.budget || '0'}</td>
+                        <td data-original="${event.budget || ''}">${event.budget ? '$' + event.budget : 'N/A'}</td>
                         <td>${event.sponsor_name}</td>
                         <td>
+                            <button onclick="enterEditMode(${event.event_ID})">Edit</button>
                             <button onclick="deleteEvent(${event.event_ID})">Delete</button>
                         </td>
                     </tr>
@@ -95,6 +96,67 @@
             }
         }
 
+        async function editEvent(id) {
+            window.location.href = `event_edit_form.html?id=${id}`;
+        }
+
+        function enterEditMode(id) {
+            const row = document.getElementById(`event-row-${id}`);
+            const cells = row.getElementsByTagName('td');
+
+            // Create inputs for editable fields only
+            cells[1].innerHTML = `<input type="text" value="${cells[1].getAttribute('data-original')}" class="edit-input">`; // name
+            cells[2].innerHTML = `<input type="date" value="${cells[2].getAttribute('data-original')}" class="edit-input">`; // date
+            cells[3].innerHTML = `<input type="text" value="${cells[3].getAttribute('data-original')}" class="edit-input">`; // type
+            cells[5].innerHTML = `<input type="number" value="${cells[5].getAttribute('data-original')}" class="edit-input" step="0.01">`; // budget
+
+            // Keep venue and sponsor cells as read-only
+            cells[7].innerHTML = `
+                <button onclick="saveEvent(${id})">Save</button>
+                <button onclick="cancelEdit(${id})">Cancel</button>
+            `;
+        }
+
+        function cancelEdit(id) {
+            // Reload events to reset the row
+            loadEvents();
+        }
+
+        async function saveEvent(id) {
+            const row = document.getElementById(`event-row-${id}`);
+            const inputs = row.getElementsByClassName('edit-input');
+
+            const formData = {
+                event_name: inputs[0].value,
+                event_date: inputs[1].value,
+                event_type: inputs[2].value,
+                budget: parseFloat(inputs[3].value) || 0
+            };
+
+            try {
+                const response = await fetch(`/events/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || 'Failed to update event');
+                    showMessage(result.message || 'Event updated successfully');
+                } else {
+                    const text = await response.text();
+                    throw new Error(text || 'Failed to update event');
+                }
+                
+                await loadEvents();
+            } catch (error) {
+                console.error('Update error:', error);
+                showMessage('Error updating event: ' + error.message, true);
+            }
+        }
+
         function showMessage(message, isError = false) {
             const messageDiv = document.getElementById('message');
             messageDiv.textContent = message;
@@ -102,5 +164,6 @@
             setTimeout(() => messageDiv.textContent = '', 3000);
         }
     </script>
+</html>
 </body>
 </html>
