@@ -45,10 +45,22 @@
             <a href="sponsor_management_form.html">Manage Sponsors</a>
             <a href="attendee_registration_form.html">Register Attendees</a>
             <a href="venue_management.html">Manage Venues</a>
+            <a href="admin_dashboard.html">Back to Admin Dashboard</a>
         </div>
     </div>
     <script>
-        document.addEventListener('DOMContentLoaded', loadEvents);
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('/check_auth');
+                if (response.ok) {
+                    loadEvents();
+                } else {
+                    window.location.href = 'admin_login.html';
+                }
+            } catch (error) {
+                window.location.href = 'admin_login.html';
+            }
+        });
 
         async function loadEvents() {
             try {

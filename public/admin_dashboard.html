@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .warning { color: #ff4444; font-weight: bold; }
+        .search-section { margin: 20px 0; }
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .results-section {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Admin Dashboard</h1>
+        <div id="message"></div>
+
+        <!-- Search Forms -->
+        <div class="search-section">
+            <h2>Search Admin Users</h2>
+            
+            <!-- Vulnerable Search Form -->
+            <div class="form-section">
+                <h3>Vulnerable Search (SQL Injection Possible)</h3>
+                <p class="warning">Warning: This search is vulnerable to SQL injection!</p>
+                <p>Try: ' OR '1'='1</p>
+                <form id="vulnerableSearchForm">
+                    <label for="vulnerable-username">Username:</label>
+                    <input type="text" id="vulnerable-username" required>
+                    <input type="submit" value="Search Vulnerably">
+                </form>
+            </div>
+
+            <!-- Secure Search Form -->
+            <div class="form-section">
+                <h3>Secure Search (Using Prepared Statements)</h3>
+                <form id="secureSearchForm">
+                    <label for="secure-username">Username:</label>
+                    <input type="text" id="secure-username" required>
+                    <input type="submit" value="Search Securely">
+                </form>
+            </div>
+
+            <!-- Results Display -->
+            <div id="searchResults" class="results-section"></div>
+        </div>
+
+        <div class="nav-links">
+            <a href="event_management_dashboard.html">Manage Events</a>
+            <a href="sponsor_management_form.html">Manage Sponsors</a>
+            <a href="attendee_registration_form.html">Register Attendees</a>
+            <a href="venue_management.html">Manage Venues</a>
+            <button id="logoutButton">Logout</button>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('/check_auth');
+                if (!response.ok) {
+                    window.location.href = 'admin_login.html';
+                }
+            } catch (error) {
+                window.location.href = 'admin_login.html';
+            }
+        });
+
+        document.getElementById('vulnerableSearchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('vulnerable-username').value;
+            try {
+                const response = await fetch('/search_admin_vulnerable', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+                const results = await response.json();
+                displayResults(results, 'Vulnerable Search Results');
+            } catch (error) {
+                showMessage('Error performing search', true);
+            }
+        });
+
+        document.getElementById('secureSearchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('secure-username').value;
+            try {
+                const response = await fetch('/search_admin_secure', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+                const results = await response.json();
+                displayResults(results, 'Secure Search Results');
+            } catch (error) {
+                showMessage('Error performing search', true);
+            }
+        });
+
+        document.getElementById('logoutButton').addEventListener('click', async () => {
+            try {
+                await fetch('/admin_logout', { method: 'POST' });
+                window.location.href = 'admin_login.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        });
+
+        function displayResults(results, title) {
+            const resultsDiv = document.getElementById('searchResults');
+            if (results.length === 0) {
+                resultsDiv.innerHTML = '<p>No results found.</p>';
+                return;
+            }
+
+            let html = `<h3>${title}</h3><ul>`;
+            results.forEach(user => {
+                html += `<li>Username: ${escapeHtml(user.username)} - Password: ${escapeHtml(user.password)}</li>`;
+            });
+            html += '</ul>';
+            resultsDiv.innerHTML = html;
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function showMessage(message, isError = false) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = isError ? 'error' : 'success';
+            setTimeout(() => messageDiv.textContent = '', 3000);
+        }
+    </script>
+</body>
+</html>

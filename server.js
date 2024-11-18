@@ -4,6 +4,7 @@ const app = express();
 
 app.use(express.static('public'));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 const connection = mysql.createConnection({
     host: 'localhost',
@@ -11,6 +12,9 @@ const connection = mysql.createConnection({
     password: 'R3132002',
     database: 'EventManagement'
 });
+
+// Simple in-memory auth tracking (not recommended for production)
+const authenticatedUsers = new Set();
 
 // Generic reset auto-increment function
 async function resetAutoIncrement(tableName, idColumn) {
@@ -48,6 +52,60 @@ async function reorderIds(tableName, idColumn, dependentTables) {
         throw error;
     }
 }
+
+// Admin login route (simplified)
+app.post('/admin_login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const [admins] = await connection.promise().query(
+            'SELECT * FROM Admin_Logins WHERE username = ? AND password = ?',
+            [username, password]
+        );
+        if (admins.length > 0) {
+            const admin = admins[0];
+            authenticatedUsers.add(admin.admin_ID);
+            res.json({ message: 'Login successful' });
+        } else {
+            res.status(401).json({ error: 'Invalid credentials' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Password change route (with vulnerable verification)
+app.post('/change_password', async (req, res) => {
+    const { username, oldPassword, newPassword } = req.body;
+    try {
+        // Vulnerable update query (susceptible to SQL injection)
+        const updateQuery = `UPDATE Admin_Logins SET password = '${newPassword}' WHERE username = '${username}' AND password = '${oldPassword}'`;
+        
+        connection.query(updateQuery, (error, result) => {
+            if (error) {
+                return res.status(500).json({ error: error.message });
+            }
+            if (result.affectedRows > 0) {
+                res.json({ message: 'Password changed successfully' });
+            } else {
+                res.status(401).json({ error: 'Invalid username or current password' });
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Authentication check route (simplified)
+app.get('/check_auth', (req, res) => {
+    // In a real application, you would use proper session management
+    res.json({ authenticated: true });
+});
+
+// Logout route (simplified)
+app.post('/admin_logout', (req, res) => {
+    // In a real application, you would clear the session
+    res.json({ message: 'Logged out successfully' });
+});
 
 // Get all sponsors
 app.get('/sponsors', async (req, res) => {
@@ -102,17 +160,19 @@ app.delete('/sponsors/:id', async (req, res) => {
 
 // Update sponsor
 app.put('/sponsors/:id', async (req, res) => {
-    const sponsorId = parseInt(req.params.id, 10);
-    const { sponsor_name, sponsor_phone_number, sponsor_email } = req.body;
-    console.log(`Updating sponsor ID: ${sponsorId}`, req.body);
     try {
+        const { id } = req.params;
+        const { sponsor_name, sponsor_phone_number, sponsor_email } = req.body;
+        
         const [result] = await connection.promise().query(
             'UPDATE Sponsors SET sponsor_name = ?, sponsor_phone_number = ?, sponsor_email = ? WHERE sponsor_ID = ?',
-            [sponsor_name, sponsor_phone_number, sponsor_email, sponsorId]
+            [sponsor_name, sponsor_phone_number, sponsor_email, id]
         );
+
         if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Sponsor not found' });
+            return res.status(404).json({ error: 'Sponsor not found' });
         }
+        
         res.json({ message: 'Sponsor updated successfully' });
     } catch (error) {
         console.error('Error updating sponsor:', error);
@@ -139,7 +199,7 @@ app.post('/submit_venue', async (req, res) => {
     }
     try {
         const [result] = await connection.promise().query(
-            'INSERT INTO Venues (venue_name, venue_phone_number, venue_email, venue_capacity) VALUES (?, ?, ?, ?)',
+            'INSERT INTO Venues (venue_name, venue_phone_number, venue_email, venue_capacity) VALUES (?, ?, ?, ?, ?)',
             [venue_name, venue_phone_number, venue_email, venue_capacity]
         );
         if (result.affectedRows === 1) {
@@ -176,17 +236,19 @@ app.delete('/venues/:id', async (req, res) => {
 
 // Update venue (if you have edit functionality for venues)
 app.put('/venues/:id', async (req, res) => {
-    const venueId = parseInt(req.params.id, 10);
-    const { venue_name, venue_phone_number, venue_email, venue_capacity } = req.body;
-    console.log(`Updating venue ID: ${venueId}`, req.body);
     try {
+        const { id } = req.params;
+        const { venue_name, venue_phone_number, venue_email, venue_capacity } = req.body;
+        
         const [result] = await connection.promise().query(
             'UPDATE Venues SET venue_name = ?, venue_phone_number = ?, venue_email = ?, venue_capacity = ? WHERE venue_ID = ?',
-            [venue_name, venue_phone_number, venue_email, venue_capacity, venueId]
+            [venue_name, venue_phone_number, venue_email, venue_capacity, id]
         );
+
         if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Venue not found' });
+            return res.status(404).json({ error: 'Venue not found' });
         }
+        
         res.json({ message: 'Venue updated successfully' });
     } catch (error) {
         console.error('Error updating venue:', error);
@@ -227,20 +289,21 @@ app.post('/submit_event', async (req, res) => {
 
 // Update event
 app.put('/events/:id', async (req, res) => {
-    const eventId = parseInt(req.params.id, 10);
-    const { event_name, event_date, event_type, budget } = req.body;
-    console.log(`Updating event ID: ${eventId}`, req.body);
     try {
+        const { id } = req.params;
+        const { event_name, event_date, event_type, budget } = req.body;
+        
         const [result] = await connection.promise().query(
             'UPDATE Events SET event_name = ?, event_date = ?, event_type = ?, budget = ? WHERE event_ID = ?',
-            [event_name, event_date, event_type, budget, eventId]
+            [event_name, event_date, event_type, budget, id]
         );
+
         if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Event not found' });
+            return res.status(404).json({ error: 'Event not found' });
         }
+        
         res.json({ message: 'Event updated successfully' });
     } catch (error) {
-        console.error('Error updating event:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -358,6 +421,70 @@ app.delete('/venue_locations/:venueId/:location', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+});
+
+// Update venue location
+app.put('/venue_locations/:venueId/:oldLocation', async (req, res) => {
+    try {
+        const { venueId, oldLocation } = req.params;
+        const { new_location } = req.body;
+        
+        const [result] = await connection.promise().query(
+            'UPDATE Venue_Locations SET venue_location = ? WHERE venue_ID = ? AND venue_location = ?',
+            [new_location, venueId, decodeURIComponent(oldLocation)]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Location not found' });
+        }
+        
+        res.json({ message: 'Location updated successfully' });
+    } catch (error) {
+        console.error('Error updating location:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Helper function to escape HTML and prevent XSS
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// Vulnerable search endpoint
+app.post('/search_admin_vulnerable', (req, res) => {
+    const username = req.body.username;
+    // Vulnerable SQL query (Susceptible to SQL Injection)
+    const query = `SELECT * FROM Admin_Logins WHERE username = '${username}'`;
+
+    connection.query(query, (error, results) => {
+        if (error) {
+            return res.status(500).json({ error: 'Server Error' });
+        }
+        res.json(results);
+    });
+});
+
+// Secure search endpoint
+app.post('/search_admin_secure', (req, res) => {
+    const username = req.body.username;
+    // Prepared statement to prevent SQL Injection
+    const query = 'SELECT * FROM Admin_Logins WHERE username = ?';
+
+    connection.execute(query, [username], (error, results) => {
+        if (error) {
+            return res.status(500).json({ error: 'Server Error' });
+        }
+        res.json(results);
+    });
+});
+
+app.get('/', (req, res) => {
+    res.redirect('/admin_login.html');
 });
 
 app.listen(3000, () => {
