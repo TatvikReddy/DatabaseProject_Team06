@@ -1,0 +1,17 @@
+{
+  "tasks": {
+    "start": "deno run --allow-net --allow-read server.ts",
+    "load": "deno run --allow-net --allow-read loadData.ts"
+  },
+  "imports": {
+    "oak/": "https://deno.land/x/oak@v12.6.1/",
+    "mysql2/": "npm:mysql2@^3.11.4"
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "types": [
+      "./types/deno.d.ts"
+    ],
+    "checkJs": true
+  }
+}
