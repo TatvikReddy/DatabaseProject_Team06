@@ -19,6 +19,37 @@ input[type="password"] {
     font-size: 16px;
 }
 
+.currency-input {
+    position: relative;
+    width: 100%;
+    margin: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.currency-input::before {
+    content: '$';
+    font-size: 16px;
+    color: var(--text-color);
+    line-height: 1;
+    width: 20px;
+    text-align: center;
+}
+
+.currency-input input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 16px;
+    margin: 0;
+}
+
+.currency-input br {
+    display: none;
+}
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
