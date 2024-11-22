@@ -333,16 +333,28 @@ app.delete('/events/:id', async (req, res) => {
 app.get('/event_attendees/:id', async (req, res) => {
     const eventId = req.params.id;
     try {
-        // Reset auto-increment before fetching attendees
+        // Add logging
+        console.log('Fetching attendees for event:', eventId);
+
+        // Reset auto-increment
         await resetAutoIncrement('Attendees', 'attendee_ID');
 
+        // Get attendees
         const [results] = await connection.promise().query(
             'SELECT * FROM Attendees WHERE event_ID = ? ORDER BY attendee_ID',
             [eventId]
         );
+
+        // Log results
+        console.log(`Found ${results.length} attendees for event ${eventId}`);
+
         res.json(results);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error fetching attendees:', error);
+        res.status(500).json({ 
+            error: error.message,
+            details: 'Error fetching attendees from database'
+        });
     }
 });
 
@@ -380,6 +392,28 @@ app.delete('/attendees/:id', async (req, res) => {
 
         res.json({ message: 'Attendee removed successfully' });
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Update attendee
+app.put('/attendees/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { first_name, last_name, email, phone_number } = req.body;
+        
+        const [result] = await connection.promise().query(
+            'UPDATE Attendees SET first_name = ?, last_name = ?, email = ?, phone_number = ? WHERE attendee_ID = ?',
+            [first_name, last_name, email, phone_number, id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Attendee not found' });
+        }
+        
+        res.json({ message: 'Attendee updated successfully' });
+    } catch (error) {
+        console.error('Error updating attendee:', error);
         res.status(500).json({ error: error.message });
     }
 });

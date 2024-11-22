@@ -10,6 +10,7 @@
     <div class="container">
         <h1 id="eventTitle">Event Attendees</h1>
         <div id="message"></div>
+        <h2 id="eventName"></h2>
 
         <table border="1">
             <thead>
@@ -41,40 +42,106 @@
             const eventId = params.get('id');
             const eventName = params.get('name');
 
-            if (eventId && eventName) {
-                document.getElementById('eventTitle').textContent = `Attendees for ${decodeURIComponent(eventName)}`;
-                loadAttendees(eventId);
-            } else {
-                showMessage('No event specified', true);
+            if (!eventId) {
+                showMessage('Error: No event ID provided', true);
+                return;
             }
+
+            document.getElementById('eventTitle').textContent = 
+                eventName ? `Attendees for ${decodeURIComponent(eventName)}` : 'Event Attendees';
+            document.getElementById('eventName').textContent = 
+                eventName ? `Attendees for: ${decodeURIComponent(eventName)}` : '';
+            
+            console.log('Loading attendees for event:', eventId); // Debug log
+            loadAttendees(eventId);
         });
 
         async function loadAttendees(eventId) {
             try {
-                const response = await fetch(`/event_attendees/${eventId}`);
-                if (!response.ok) throw new Error('Failed to fetch attendees');
+                const params = new URLSearchParams(window.location.search);
+                const currentEventId = params.get('id');
+                
+                const response = await fetch(`/event_attendees/${currentEventId}`);
+                console.log('Response status:', response.status); // Debug log
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Server response:', errorText); // Debug log
+                    throw new Error(`Failed to fetch attendees: ${errorText}`);
+                }
                 
                 const attendees = await response.json();
+                console.log('Received attendees:', attendees); // Debug log
+                
                 const tbody = document.getElementById('attendeesTableBody');
                 
                 tbody.innerHTML = attendees.map(attendee => `
-                    <tr>
+                    <tr id="attendee-row-${attendee.attendee_ID}">
                         <td>${attendee.attendee_ID}</td>
-                        <td>${attendee.first_name}</td>
-                        <td>${attendee.last_name}</td>
-                        <td>${attendee.email || 'N/A'}</td>
-                        <td>${attendee.phone_number || 'N/A'}</td>
+                        <td data-original="${attendee.first_name}">${attendee.first_name}</td>
+                        <td data-original="${attendee.last_name}">${attendee.last_name}</td>
+                        <td data-original="${attendee.email}">${attendee.email}</td>
+                        <td data-original="${attendee.phone_number || ''}">${attendee.phone_number || 'N/A'}</td>
                         <td>
-                            <button onclick="deleteAttendee(${attendee.attendee_ID})">Delete</button>
+                            <div class="action-buttons">
+                                <button onclick="enterEditMode(${attendee.attendee_ID})">Edit</button>
+                                <button onclick="deleteAttendee(${attendee.attendee_ID})">Delete</button>
+                            </div>
                         </td>
                     </tr>
                 `).join('');
 
                 document.getElementById('totalAttendees').textContent = attendees.length;
             } catch (error) {
-                console.error('Error loading attendees:', error);
-                showMessage('Error loading attendees', true);
+                console.error('Error in loadAttendees:', error); // Debug log
+                showMessage(`Error loading attendees: ${error.message}`, true);
             }
+        }
+
+        function enterEditMode(id) {
+            const row = document.getElementById(`attendee-row-${id}`);
+            const cells = row.getElementsByTagName('td');
+
+            cells[1].innerHTML = `<input type="text" value="${cells[1].getAttribute('data-original')}" class="edit-input">`;
+            cells[2].innerHTML = `<input type="text" value="${cells[2].getAttribute('data-original')}" class="edit-input">`;
+            cells[3].innerHTML = `<input type="email" value="${cells[3].getAttribute('data-original')}" class="edit-input">`;
+            cells[4].innerHTML = `<input type="tel" value="${cells[4].getAttribute('data-original')}" class="edit-input">`;
+            cells[5].innerHTML = `
+                <button onclick="saveAttendee(${id})">Save</button>
+                <button onclick="cancelEdit(${id})">Cancel</button>
+            `;
+        }
+
+        async function saveAttendee(id) {
+            const row = document.getElementById(`attendee-row-${id}`);
+            const inputs = row.getElementsByClassName('edit-input');
+
+            const formData = {
+                first_name: inputs[0].value,
+                last_name: inputs[1].value,
+                email: inputs[2].value,
+                phone_number: inputs[3].value
+            };
+
+            try {
+                const response = await fetch(`/attendees/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error);
+                
+                showMessage('Attendee updated successfully');
+                await loadAttendees();
+            } catch (error) {
+                showMessage('Error updating attendee: ' + error.message, true);
+            }
+        }
+
+        function cancelEdit(id) {
+            loadAttendees();
         }
 
         async function deleteAttendee(attendeeId) {
