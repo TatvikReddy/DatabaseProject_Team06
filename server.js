@@ -199,7 +199,7 @@ app.post('/submit_venue', async (req, res) => {
     }
     try {
         const [result] = await connection.promise().query(
-            'INSERT INTO Venues (venue_name, venue_phone_number, venue_email, venue_capacity) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO Venues (venue_name, venue_phone_number, venue_email, venue_capacity) VALUES (?, ?, ?, ?)', // Removed extra '?'
             [venue_name, venue_phone_number, venue_email, venue_capacity]
         );
         if (result.affectedRows === 1) {
@@ -333,6 +333,9 @@ app.delete('/events/:id', async (req, res) => {
 app.get('/event_attendees/:id', async (req, res) => {
     const eventId = req.params.id;
     try {
+        // Reset auto-increment before fetching attendees
+        await resetAutoIncrement('Attendees', 'attendee_ID');
+
         const [results] = await connection.promise().query(
             'SELECT * FROM Attendees WHERE event_ID = ? ORDER BY attendee_ID',
             [eventId]
@@ -371,6 +374,10 @@ app.delete('/attendees/:id', async (req, res) => {
         if (result.affectedRows === 0) {
             return res.status(404).json({ message: 'Attendee not found' });
         }
+
+        // Reorder attendee IDs and reset auto-increment
+        await reorderIds('Attendees', 'attendee_ID', []);
+
         res.json({ message: 'Attendee removed successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });

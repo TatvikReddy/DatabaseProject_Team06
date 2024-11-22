@@ -20,7 +20,7 @@
             <input type="text" id="sponsor_name" name="sponsor_name" required><br><br>
 
             <label for="sponsor_phone_number">Phone Number:</label><br>
-            <input type="tel" id="sponsor_phone_number" name="sponsor_phone_number" pattern="[0-9]*"><br><br>
+            <input type="tel" id="sponsor_phone_number" name="sponsor_phone_number" maxlength="12"><br><br>
 
             <label for="sponsor_email">Email:</label><br>
             <input type="email" id="sponsor_email" name="sponsor_email"><br><br>
@@ -52,7 +52,31 @@
 
     <script>
         // Load sponsors when page loads
-        document.addEventListener('DOMContentLoaded', loadSponsors);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSponsors();
+
+            // Phone number input formatting
+            const phoneInput = document.getElementById('sponsor_phone_number');
+            phoneInput.addEventListener('input', function() {
+                let value = this.value.replace(/\D/g, '').substring(0, 10); // Remove non-digit characters and limit to 10 digits
+                const length = value.length;
+
+                if (length > 6) {
+                    value = value.replace(/(\d{3})(\d{3})(\d+)/, '$1-$2-$3');
+                } else if (length > 3) {
+                    value = value.replace(/(\d{3})(\d+)/, '$1-$2');
+                } else {
+                    value = value;
+                }
+                this.value = value;
+            });
+
+            // Email input to lowercase
+            const emailInput = document.getElementById('sponsor_email');
+            emailInput.addEventListener('input', function() {
+                this.value = this.value.toLowerCase();
+            });
+        });
 
         async function loadSponsors() {
             try {

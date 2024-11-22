@@ -26,7 +26,7 @@
                 <input type="text" id="venue_name" name="venue_name" required>
 
                 <label for="venue_phone_number">Phone Number:</label>
-                <input type="tel" id="venue_phone_number" name="venue_phone_number">
+                <input type="tel" id="venue_phone_number" name="venue_phone_number" maxlength="12">
 
                 <label for="venue_email">Email:</label>
                 <input type="email" id="venue_email" name="venue_email">
@@ -95,6 +95,28 @@
             // Load initial data
             loadVenues().then(() => console.log('Venues loaded'));
             loadLocations().then(() => console.log('Locations loaded'));
+
+            // Phone number input formatting
+            const phoneInput = document.getElementById('venue_phone_number');
+            phoneInput.addEventListener('input', function() {
+                let value = this.value.replace(/\D/g, '').substring(0, 10); // Remove non-digit characters and limit to 10 digits
+                const length = value.length;
+
+                if (length > 6) {
+                    value = value.replace(/(\d{3})(\d{3})(\d+)/, '$1-$2-$3');
+                } else if (length > 3) {
+                    value = value.replace(/(\d{3})(\d+)/, '$1-$2');
+                } else {
+                    value = value;
+                }
+                this.value = value;
+            });
+
+            // Email input to lowercase
+            const emailInput = document.getElementById('venue_email');
+            emailInput.addEventListener('input', function() {
+                this.value = this.value.toLowerCase();
+            });
         });
 
         async function loadVenues() {
