@@ -20,7 +20,7 @@
             <input type="text" id="sponsor_name" name="sponsor_name" required><br><br>
 
             <label for="sponsor_phone_number">Phone Number:</label><br>
-            <input type="tel" id="sponsor_phone_number" name="sponsor_phone_number"><br><br>
+            <input type="tel" id="sponsor_phone_number" name="sponsor_phone_number" pattern="[0-9]*"><br><br>
 
             <label for="sponsor_email">Email:</label><br>
             <input type="email" id="sponsor_email" name="sponsor_email"><br><br>
@@ -196,7 +196,7 @@
             for (let i = 1; i < cells.length - 1; i++) {
                 const originalValue = cells[i].getAttribute('data-original');
                 const inputType = i === 3 ? 'email' : 'text';
-                cells[i].innerHTML = `<input type="${inputType}" value="${originalValue}" class="edit-input">`;
+                cells[i].innerHTML = `<input type="${inputType}" value="${originalValue}" class="edit-input" pattern="[0-9]*">`;
             }
 
             cells[cells.length - 1].innerHTML = `
