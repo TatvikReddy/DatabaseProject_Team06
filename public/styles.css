@@ -109,6 +109,8 @@ table {
     background: white;
     margin: 20px 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-top: 20px;
+    margin-bottom: 20px;
 }
 
 th, td {
@@ -165,4 +167,26 @@ tr:hover {
     border-radius: 4px;
     text-align: center;
     font-weight: bold;
+}
+
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn-action {
+    padding: 10px 20px;
+    font-size: 16px;
+}
+
+/* Event Link Styling */
+.event-link {
+    color: var(--primary-color);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.event-link:hover {
+    color: var(--secondary-color);
 }

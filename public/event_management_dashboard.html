@@ -5,18 +5,6 @@
     <title>Event Management Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles.css">
-    <style>
-        .error { color: red; }
-        .success { color: green; }
-        .event-link {
-            color: #3498db;
-            text-decoration: underline;
-            cursor: pointer;
-        }
-        .event-link:hover {
-            color: #2980b9;
-        }
-    </style>
 </head>
 <body>
     <div class="container">
@@ -83,8 +71,10 @@
                         <td data-original="${event.budget || ''}">${event.budget ? '$' + event.budget : 'N/A'}</td>
                         <td>${event.sponsor_name}</td>
                         <td>
-                            <button onclick="enterEditMode(${event.event_ID})">Edit</button>
-                            <button onclick="deleteEvent(${event.event_ID})">Delete</button>
+                            <div class="action-buttons">
+                                <button class="btn-action" onclick="enterEditMode(${event.event_ID})">Edit</button>
+                                <button class="btn-action" onclick="deleteEvent(${event.event_ID})">Delete</button>
+                            </div>
                         </td>
                     </tr>
                 `).join('');
