@@ -402,19 +402,40 @@ app.put('/attendees/:id', async (req, res) => {
         const { id } = req.params;
         const { first_name, last_name, email, phone_number } = req.body;
         
+        // Set content type header
+        res.setHeader('Content-Type', 'application/json');
+
+        // Validate input
+        if (!first_name || !last_name || !email) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields'
+            });
+        }
+
         const [result] = await connection.promise().query(
             'UPDATE Attendees SET first_name = ?, last_name = ?, email = ?, phone_number = ? WHERE attendee_ID = ?',
             [first_name, last_name, email, phone_number, id]
         );
 
         if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Attendee not found' });
+            return res.status(404).json({
+                success: false,
+                error: 'Attendee not found'
+            });
         }
         
-        res.json({ message: 'Attendee updated successfully' });
+        return res.status(200).json({
+            success: true,
+            message: 'Attendee updated successfully'
+        });
     } catch (error) {
         console.error('Error updating attendee:', error);
-        res.status(500).json({ error: error.message });
+        return res.status(500).json({
+            success: false,
+            error: 'Database error',
+            message: error.message
+        });
     }
 });
 

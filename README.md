@@ -5,9 +5,7 @@
 
 
 Event Managment Dashboard:
-    Change the actoins to look more nice, Center, space it and change the button size
     Being able to edit from anywhere and should update all tables(Streatch goal)
-    The hyper link should allow for editing the attendees info
 ]
 
 Attenden regerster

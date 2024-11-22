@@ -117,25 +117,43 @@
             const inputs = row.getElementsByClassName('edit-input');
 
             const formData = {
-                first_name: inputs[0].value,
-                last_name: inputs[1].value,
-                email: inputs[2].value,
-                phone_number: inputs[3].value
+                first_name: inputs[0].value.trim(),
+                last_name: inputs[1].value.trim(),
+                email: inputs[2].value.trim(),
+                phone_number: inputs[3].value.trim()
             };
 
             try {
                 const response = await fetch(`/attendees/${id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify(formData)
                 });
 
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.error);
+                let result;
+                const contentType = response.headers.get('content-type');
                 
-                showMessage('Attendee updated successfully');
-                await loadAttendees();
+                if (contentType && contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    throw new Error('Expected JSON response from server');
+                }
+
+                if (!response.ok) {
+                    throw new Error(result.error || result.message || 'Failed to update attendee');
+                }
+
+                showMessage(result.message || 'Attendee updated successfully');
+                
+                // Reload attendees list
+                const params = new URLSearchParams(window.location.search);
+                const eventId = params.get('id');
+                await loadAttendees(eventId);
             } catch (error) {
+                console.error('Save error:', error);
                 showMessage('Error updating attendee: ' + error.message, true);
             }
         }
