@@ -79,11 +79,7 @@ Install the required packages using npm:
 npm install
 ```
 
-This command installs all the dependencies specified in the 
-
-package.json
-
- file.
+This command installs all the dependencies specified in the package.json file.
 
 ### 5. Set Up the MySQL Database
 
@@ -100,35 +96,23 @@ package.json
 4. Click **Test Connection** to ensure the connection is successful.
 5. Click **OK** to save the connection.
 
-#### 5.2 Create the `EventManagement` Database
+#### 5.2 Create the `EventManagement` Database 
 
-1. Open the connection you just created by double-clicking it.
+1. Open the connection in your MySQL Workbench you just created by double-clicking it.
 2. In the **Navigator** pane on the left, right-click on **Schemas** and select **Create Schema...**.
 3. Enter `EventManagement` as the schema name.
 4. Click **Apply**, then **Apply** again to execute the SQL statement.
 5. Click **Finish**.
 
-#### 5.3 Create Tables Using 
-
-create.sql
-
-
+#### 5.3 Create Tables Using create.sql
 
 1. In **MySQL Workbench**, go to **File** > **Open SQL Script...**.
-2. Navigate to your project directory and open the 
-
-create.sql
-
- file.
+2. Navigate to your project directory and open the create.sql file.
 3. Make sure the default schema is set to `EventManagement` by selecting it from the dropdown in the toolbar.
 4. Execute the script by clicking the **Lightning Bolt** icon or pressing **Ctrl+Shift+Enter**.
 5. This will create all the necessary tables in the `EventManagement` database.
 
-#### 5.4 Load Initial Data Using 
-
-loadData.js
-
-
+#### 5.4 Load Initial Data Using loadData.js
 
 1. Ensure the CSV data files (e.g., `sponsors.csv`, `venues.csv`, etc.) are placed in the project directory.
 2. Open **Command Prompt** or the terminal in VSCode.
@@ -144,23 +128,11 @@ loadData.js
    node loadData.js
    ```
 
-   This script will read from 
+   This script will read from load.sql and populate your database tables with initial data.
 
-load.sql
+### 6. Configure Database Connection in server.js
 
- and populate your database tables with initial data.
-
-### 6. Configure Database Connection in 
-
-server.js
-
-
-
-1. Open 
-
-server.js
-
- in VSCode.
+1. Open server.js in VSCode.
 2. Locate the MySQL connection configuration:
 
    ```javascript
@@ -174,9 +146,7 @@ server.js
 
 3. Replace `'your_mysql_password'` with your actual MySQL root password.
 
-   **Note**: For security reasons, it's recommended to use environment variables or a `.env` file to store sensitive information. Ensure that `.env` files are included in your 
-
-.gitignore
+   **Note**: For security reasons, it's recommended to use environment variables or a `.env` file to store sensitive information. Ensure that `.env` files are included in your .gitignore
 
  to prevent them from being committed to version control.
 
@@ -194,11 +164,7 @@ You should see a message indicating that the server is running, such as:
 Server is running on port 3000
 ```
 
-If you need to run the server on a different port, you can modify the 
-
-server.js
-
- file accordingly.
+If you need to run the server on a different port, you can modify the server.js file accordingly.
 
 ## Accessing the Application
 
@@ -241,11 +207,7 @@ To access the admin functionalities, you need to log in with an admin account.
 
 - **MySQL Connection Errors**:
   - Ensure that MySQL Server is running.
-  - Verify your MySQL connection details in 
-
-server.js
-
-.
+  - Verify your MySQL connection details in server.js.
   - Check that the `EventManagement` database and tables exist.
 
 - **Module Not Found Errors**:
@@ -261,11 +223,7 @@ server.js
 
 - **Data Not Loading**:
   - Ensure that the CSV files are correctly formatted and located in the project directory.
-  - Check for errors when running 
-
-loadData.js
-
-.
+  - Check for errors when running loadData.js.
 
 ## Notes
 
@@ -279,11 +237,7 @@ loadData.js
 
 - **Database Credentials**:
   - Never commit hard-coded database passwords to version control.
-  - Update your 
-
-.gitignore
-
- file to exclude sensitive files.
+  - Update your .gitignore file to exclude sensitive files.
 
 - **Extensions in VSCode**:
   - To work with SQL files in VSCode, you can install extensions like **SQLTools** and **SQLTools MySQL/MariaDB**.
